@@ -24,19 +24,18 @@ typedef unsigned long long int smUint64_t;
 #endif
 
 #ifdef __APPLE__
-#define SHARED_MEMORY_MAX_STREAM_CHUNK_SIZE (512 * 1024)
+#define SHARED_MEMORY_MAX_STREAM_CHUNK_SIZE (1024 * 1024)
 #else
 #define SHARED_MEMORY_MAX_STREAM_CHUNK_SIZE (8 * 1024 * 1024)
 #endif
 
 #define SHARED_MEMORY_SERVER_TEST_C
-#define MAX_DEGREE_OF_FREEDOM 128 
+#define MAX_DEGREE_OF_FREEDOM 128
 #define MAX_NUM_SENSORS 256
 #define MAX_URDF_FILENAME_LENGTH 1024
 #define MAX_SDF_FILENAME_LENGTH 1024
 #define MAX_FILENAME_LENGTH MAX_URDF_FILENAME_LENGTH
 #define MAX_NUM_LINKS MAX_DEGREE_OF_FREEDOM
-#define MAX_USER_DATA_KEY_LENGTH MAX_URDF_FILENAME_LENGTH
 
 
 struct TmpFloat3
@@ -164,6 +163,9 @@ enum EnumChangeDynamicsInfoFlags
 	CHANGE_DYNAMICS_INFO_SET_CCD_SWEPT_SPHERE_RADIUS = 2048,
 	CHANGE_DYNAMICS_INFO_SET_CONTACT_PROCESSING_THRESHOLD = 4096,
 	CHANGE_DYNAMICS_INFO_SET_ACTIVATION_STATE = 8192,
+	CHANGE_DYNAMICS_INFO_SET_JOINT_DAMPING = 16384,
+	CHANGE_DYNAMICS_INFO_SET_ANISOTROPIC_FRICTION = 32768,
+	CHANGE_DYNAMICS_INFO_SET_MAX_JOINT_VELOCITY = 1<<16,	
 };
 
 struct ChangeDynamicsInfoArgs
@@ -185,6 +187,9 @@ struct ChangeDynamicsInfoArgs
 	double m_ccdSweptSphereRadius;
 	double m_contactProcessingThreshold;
 	int m_activationState;
+	double m_jointDamping;
+	double m_anisotropicFriction[3];
+	double m_maxJointVelocity;
 };
 
 struct GetDynamicsInfoArgs
@@ -445,46 +450,62 @@ enum EnumSimDesiredStateUpdateFlags
 	SIM_DESIRED_STATE_HAS_KD = 4,
 	SIM_DESIRED_STATE_HAS_KP = 8,
 	SIM_DESIRED_STATE_HAS_MAX_FORCE = 16,
-	SIM_DESIRED_STATE_HAS_RHS_CLAMP = 32
+	SIM_DESIRED_STATE_HAS_RHS_CLAMP = 32,
 };
 
 enum EnumSimParamUpdateFlags
 {
 	SIM_PARAM_UPDATE_DELTA_TIME = 1,
-	SIM_PARAM_UPDATE_GRAVITY = 2,
-	SIM_PARAM_UPDATE_NUM_SOLVER_ITERATIONS = 4,
-	SIM_PARAM_UPDATE_NUM_SIMULATION_SUB_STEPS = 8,
-	SIM_PARAM_UPDATE_REAL_TIME_SIMULATION = 16,
-	SIM_PARAM_UPDATE_DEFAULT_CONTACT_ERP = 32,
-	SIM_PARAM_UPDATE_INTERNAL_SIMULATION_FLAGS = 64,
-	SIM_PARAM_UPDATE_USE_SPLIT_IMPULSE = 128,
-	SIM_PARAM_UPDATE_SPLIT_IMPULSE_PENETRATION_THRESHOLD = 256,
-	SIM_PARAM_UPDATE_COLLISION_FILTER_MODE = 512,
-	SIM_PARAM_UPDATE_CONTACT_BREAKING_THRESHOLD = 1024,
-	SIM_PARAM_ENABLE_CONE_FRICTION = 2048,
-	SIM_PARAM_ENABLE_FILE_CACHING = 4096,
-	SIM_PARAM_UPDATE_RESTITUTION_VELOCITY_THRESHOLD = 8192,
-	SIM_PARAM_UPDATE_DEFAULT_NON_CONTACT_ERP = 16384,
-	SIM_PARAM_UPDATE_DEFAULT_FRICTION_ERP = 32768,
-	SIM_PARAM_UPDATE_DETERMINISTIC_OVERLAPPING_PAIRS = 65536,
-	SIM_PARAM_UPDATE_CCD_ALLOWED_PENETRATION = 131072,
-	SIM_PARAM_UPDATE_JOINT_FEEDBACK_MODE = 262144,
-	SIM_PARAM_UPDATE_DEFAULT_GLOBAL_CFM = 524288,
-	SIM_PARAM_UPDATE_DEFAULT_FRICTION_CFM = 1048576,
-	SIM_PARAM_UPDATE_SOLVER_RESIDULAL_THRESHOLD = 2097152,
-	SIM_PARAM_UPDATE_CONTACT_SLOP = 4194304,
-	SIM_PARAM_ENABLE_SAT = 8388608,
-	SIM_PARAM_CONSTRAINT_SOLVER_TYPE = 16777216,
-	SIM_PARAM_CONSTRAINT_MIN_SOLVER_ISLAND_SIZE = 33554432,
-
+	SIM_PARAM_UPDATE_GRAVITY = 1<<1,
+	SIM_PARAM_UPDATE_NUM_SOLVER_ITERATIONS = 1<<2,
+	SIM_PARAM_UPDATE_NUM_SIMULATION_SUB_STEPS = 1<<3,
+	SIM_PARAM_UPDATE_REAL_TIME_SIMULATION = 1<<4,
+	SIM_PARAM_UPDATE_DEFAULT_CONTACT_ERP = 1<<5,
+	SIM_PARAM_UPDATE_INTERNAL_SIMULATION_FLAGS = 1<<6,
+	SIM_PARAM_UPDATE_USE_SPLIT_IMPULSE = 1<<7,
+	SIM_PARAM_UPDATE_SPLIT_IMPULSE_PENETRATION_THRESHOLD = 1<<8,
+	SIM_PARAM_UPDATE_COLLISION_FILTER_MODE = 1 << 9,
+	SIM_PARAM_UPDATE_CONTACT_BREAKING_THRESHOLD = 1 << 10,
+	SIM_PARAM_ENABLE_CONE_FRICTION = 1 << 11,
+	SIM_PARAM_ENABLE_FILE_CACHING = 1 << 12,
+	SIM_PARAM_UPDATE_RESTITUTION_VELOCITY_THRESHOLD = 1 << 13,
+	SIM_PARAM_UPDATE_DEFAULT_NON_CONTACT_ERP = 1 << 14,
+	SIM_PARAM_UPDATE_DEFAULT_FRICTION_ERP = 1 << 15,
+	SIM_PARAM_UPDATE_DETERMINISTIC_OVERLAPPING_PAIRS = 1 << 16,
+	SIM_PARAM_UPDATE_CCD_ALLOWED_PENETRATION = 1 << 17,
+	SIM_PARAM_UPDATE_JOINT_FEEDBACK_MODE = 1 << 18,
+	SIM_PARAM_UPDATE_DEFAULT_GLOBAL_CFM = 1 << 19,
+	SIM_PARAM_UPDATE_DEFAULT_FRICTION_CFM = 1 << 20,
+	SIM_PARAM_UPDATE_SOLVER_RESIDULAL_THRESHOLD = 1 << 21,
+	SIM_PARAM_UPDATE_CONTACT_SLOP = 1 << 22,
+	SIM_PARAM_ENABLE_SAT = 1 << 23,
+	SIM_PARAM_CONSTRAINT_SOLVER_TYPE = 1 << 24,
+	SIM_PARAM_CONSTRAINT_MIN_SOLVER_ISLAND_SIZE = 1 << 25,
+	SIM_PARAM_REPORT_CONSTRAINT_SOLVER_ANALYTICS = 1 << 26,
+	SIM_PARAM_UPDATE_WARM_STARTING_FACTOR = 1 << 27,
+	SIM_PARAM_UPDATE_ARTICULATED_WARM_STARTING_FACTOR = 1 << 28,
+	SIM_PARAM_UPDATE_SPARSE_SDF = 1 << 29,
+        
 };
 
 enum EnumLoadSoftBodyUpdateFlags
 {
 	LOAD_SOFT_BODY_FILE_NAME = 1,
-	LOAD_SOFT_BODY_UPDATE_SCALE = 2,
-	LOAD_SOFT_BODY_UPDATE_MASS = 4,
-	LOAD_SOFT_BODY_UPDATE_COLLISION_MARGIN = 8
+	LOAD_SOFT_BODY_UPDATE_SCALE = 1<<1,
+	LOAD_SOFT_BODY_UPDATE_MASS = 1<<2,
+	LOAD_SOFT_BODY_UPDATE_COLLISION_MARGIN = 1<<3,
+	LOAD_SOFT_BODY_INITIAL_POSITION = 1<<4,
+        LOAD_SOFT_BODY_INITIAL_ORIENTATION = 1<<5,
+        LOAD_SOFT_BODY_ADD_COROTATED_FORCE = 1<<6,
+        LOAD_SOFT_BODY_ADD_MASS_SPRING_FORCE = 1<<7,
+        LOAD_SOFT_BODY_ADD_GRAVITY_FORCE = 1<<8,
+        LOAD_SOFT_BODY_SET_COLLISION_HARDNESS = 1<<9,
+        LOAD_SOFT_BODY_SET_FRICTION_COEFFICIENT = 1<<10,
+        LOAD_SOFT_BODY_ADD_BENDING_SPRINGS = 1<<11,
+        LOAD_SOFT_BODY_ADD_NEOHOOKEAN_FORCE = 1<<12,
+        LOAD_SOFT_BODY_USE_SELF_COLLISION = 1<<13,
+    LOAD_SOFT_BODY_USE_FACE_CONTACT = 1<<14,
+    LOAD_SOFT_BODY_SIM_MESH = 1<<15,
 };
 
 enum EnumSimParamInternalSimFlags
@@ -501,6 +522,22 @@ struct LoadSoftBodyArgs
 	double m_scale;
 	double m_mass;
 	double m_collisionMargin;
+	double m_initialPosition[3];
+    double m_initialOrientation[4];
+    double m_springElasticStiffness;
+    double m_springDampingStiffness;
+    double m_springBendingStiffness;
+    double m_corotatedMu;
+    double m_corotatedLambda;
+    int m_useBendingSprings;
+    double m_collisionHardness;
+    double m_useSelfCollision;
+    double m_frictionCoeff;
+    double m_NeoHookeanMu;
+    double m_NeoHookeanLambda;
+    double m_NeoHookeanDamping;
+    int m_useFaceContact;
+    char m_simFileName[MAX_FILENAME_LENGTH];
 };
 
 struct b3LoadSoftBodyResultArgs
@@ -521,7 +558,12 @@ struct SendActualStateArgs
 	int m_numDegreeOfFreedomU;
 
 	double m_rootLocalInertialFrame[7];
+	struct SendActualStateSharedMemoryStorage* m_stateDetails;
 
+};
+
+struct SendActualStateSharedMemoryStorage
+{
 	//actual state is only written by the server, read-only access by client is expected
 	double m_actualStateQ[MAX_DEGREE_OF_FREEDOM];
 	double m_actualStateQdot[MAX_DEGREE_OF_FREEDOM];
@@ -530,6 +572,7 @@ struct SendActualStateArgs
 	double m_jointReactionForces[6 * MAX_DEGREE_OF_FREEDOM];
 
 	double m_jointMotorForce[MAX_DEGREE_OF_FREEDOM];
+	double m_jointMotorForceMultiDof[MAX_DEGREE_OF_FREEDOM];
 
 	double m_linkState[7 * MAX_NUM_LINKS];
 	double m_linkWorldVelocities[6 * MAX_NUM_LINKS];  //linear velocity and angular velocity in world space (x/y/z each).
@@ -611,6 +654,7 @@ struct b3Profile
 {
 	char m_name[MAX_FILENAME_LENGTH];
 	int m_durationInMicroSeconds;
+	int m_type;
 };
 
 struct SdfLoadedArgs
@@ -658,10 +702,12 @@ enum EnumSdfRequestInfoFlags
 struct CalculateInverseDynamicsArgs
 {
 	int m_bodyUniqueId;
-
+	int m_dofCountQ;
+	int m_dofCountQdot;
 	double m_jointPositionsQ[MAX_DEGREE_OF_FREEDOM];
 	double m_jointVelocitiesQdot[MAX_DEGREE_OF_FREEDOM];
 	double m_jointAccelerations[MAX_DEGREE_OF_FREEDOM];
+	int m_flags;
 };
 
 struct CalculateInverseDynamicsResultArgs
@@ -692,6 +738,8 @@ struct CalculateMassMatrixArgs
 {
 	int m_bodyUniqueId;
 	double m_jointPositionsQ[MAX_DEGREE_OF_FREEDOM];
+	int m_dofCountQ;
+	int m_flags;
 };
 
 struct CalculateMassMatrixResultArgs
@@ -720,9 +768,10 @@ struct CalculateInverseKinematicsArgs
 {
 	int m_bodyUniqueId;
 	//	double m_jointPositionsQ[MAX_DEGREE_OF_FREEDOM];
-	double m_targetPosition[3];
+	double m_targetPositions[MAX_DEGREE_OF_FREEDOM*3];
+	int m_numEndEffectorLinkIndices;
 	double m_targetOrientation[4];  //orientation represented as quaternion, x,y,z,w
-	int m_endEffectorLinkIndex;
+	int m_endEffectorLinkIndices[MAX_DEGREE_OF_FREEDOM];
 	double m_lowerLimit[MAX_DEGREE_OF_FREEDOM];
 	double m_upperLimit[MAX_DEGREE_OF_FREEDOM];
 	double m_jointRange[MAX_DEGREE_OF_FREEDOM];
@@ -740,21 +789,6 @@ struct CalculateInverseKinematicsResultArgs
 	double m_jointPositions[MAX_DEGREE_OF_FREEDOM];
 };
 
-enum EnumUserConstraintFlags
-{
-	USER_CONSTRAINT_ADD_CONSTRAINT = 1,
-	USER_CONSTRAINT_REMOVE_CONSTRAINT = 2,
-	USER_CONSTRAINT_CHANGE_CONSTRAINT = 4,
-	USER_CONSTRAINT_CHANGE_PIVOT_IN_B = 8,
-	USER_CONSTRAINT_CHANGE_FRAME_ORN_IN_B = 16,
-	USER_CONSTRAINT_CHANGE_MAX_FORCE = 32,
-	USER_CONSTRAINT_REQUEST_INFO = 64,
-	USER_CONSTRAINT_CHANGE_GEAR_RATIO = 128,
-	USER_CONSTRAINT_CHANGE_GEAR_AUX_LINK = 256,
-	USER_CONSTRAINT_CHANGE_RELATIVE_POSITION_TARGET = 512,
-	USER_CONSTRAINT_CHANGE_ERP = 1024,
-	USER_CONSTRAINT_REQUEST_STATE = 2048,
-};
 
 enum EnumBodyChangeFlags
 {
@@ -885,6 +919,10 @@ enum InternalOpenGLVisualizerUpdateFlags
 {
 	COV_SET_CAMERA_VIEW_MATRIX = 1,
 	COV_SET_FLAGS = 2,
+	COV_SET_LIGHT_POSITION = 4,
+	COV_SET_SHADOWMAP_RESOLUTION = 8,
+	COV_SET_SHADOWMAP_WORLD_SIZE = 16,
+	COV_SET_REMOTE_SYNC_TRANSFORM_INTERVAL = 32,
 };
 
 struct ConfigureOpenGLVisualizerRequest
@@ -893,7 +931,10 @@ struct ConfigureOpenGLVisualizerRequest
 	double m_cameraPitch;
 	double m_cameraYaw;
 	double m_cameraTargetPosition[3];
-
+	double m_lightPosition[3];
+	int m_shadowMapResolution;
+	int m_shadowMapWorldSize;
+	double m_remoteSyncTransformInterval;
 	int m_setFlag;
 	int m_setEnabled;
 };
@@ -927,11 +968,15 @@ struct b3CreateUserShapeData
 	int m_collisionFlags;
 	int m_visualFlags;
 	int m_numVertices;
-	double m_vertices[B3_MAX_NUM_VERTICES*3];
 	int m_numIndices;
-	int m_indices[B3_MAX_NUM_INDICES];
+	int m_numUVs;
+	int m_numNormals;
+	double m_heightfieldTextureScaling;
+	int m_numHeightfieldRows;
+	int m_numHeightfieldColumns;
 	double m_rgbaColor[4];
 	double m_specularColor[3];
+	int m_replaceHeightfieldIndex;
 };
 
 #define MAX_COMPOUND_COLLISION_SHAPES 16
@@ -941,6 +986,8 @@ struct b3CreateUserShapeArgs
 	int m_numUserShapes;
 	b3CreateUserShapeData m_shapes[MAX_COMPOUND_COLLISION_SHAPES];
 };
+
+
 
 struct b3CreateUserShapeResultArgs
 {
@@ -975,14 +1022,8 @@ struct b3CreateMultiBodyArgs
 	int m_linkJointTypes[MAX_CREATE_MULTI_BODY_LINKS];
 	double m_linkJointAxis[3 * MAX_CREATE_MULTI_BODY_LINKS];
 	int m_flags;
-#if 0
-	std::string m_name;
-	std::string m_sourceFile;
-    btTransform m_rootTransformInWorld;
-	btHashMap<btHashString, UrdfMaterial*> m_materials;
-	btHashMap<btHashString, UrdfLink*> m_links;
-	btHashMap<btHashString, UrdfJoint*> m_joints;
-#endif
+	int m_numBatchObjects;
+
 };
 
 struct b3CreateMultiBodyResultArgs
@@ -1036,6 +1077,20 @@ struct AddUserDataRequestArgs
 	int m_valueLength;
 	char m_key[MAX_USER_DATA_KEY_LENGTH];
 	// Value data stored in m_bulletStreamDataServerToClientRefactor.
+};
+
+struct b3RequestMeshDataArgs
+{
+	int m_bodyUniqueId;
+	int m_linkIndex;
+	int m_startingVertex;
+};
+
+struct b3SendMeshDataArgs
+{
+	int m_numVerticesCopied;
+	int m_startingVertex;
+	int m_numVerticesRemaining;
 };
 
 struct SharedMemoryCommand
@@ -1097,6 +1152,7 @@ struct SharedMemoryCommand
 		struct AddUserDataRequestArgs m_addUserDataRequestArgs;
 		struct UserDataRequestArgs m_removeUserDataRequestArgs;
 		struct b3CollisionFilterArgs m_collisionFilterArgs;
+		struct b3RequestMeshDataArgs m_requestMeshDataArgs;
 	};
 };
 
@@ -1171,6 +1227,8 @@ struct SharedMemoryStatus
 		struct SyncUserDataArgs m_syncUserDataArgs;
 		struct UserDataResponseArgs m_userDataResponseArgs;
 		struct UserDataRequestArgs m_removeUserDataResponseArgs;
+		struct b3ForwardDynamicsAnalyticsArgs m_forwardDynamicsAnalyticsArgs;
+		struct b3SendMeshDataArgs m_sendMeshDataArgs;
 	};
 };
 

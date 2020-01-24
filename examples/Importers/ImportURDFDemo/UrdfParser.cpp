@@ -27,7 +27,7 @@ static bool parseVector4(btVector4& vec4, const std::string& vector_str)
 {
 	vec4.setZero();
 	btArray<std::string> pieces;
-	btArray<float> rgba;
+	btArray<double> rgba;
 	btAlignedObjectArray<std::string> strArray;
 	urdfIsAnyOf(" ", strArray);
 	urdfStringSplit(pieces, vector_str, strArray);
@@ -50,7 +50,7 @@ static bool parseVector3(btVector3& vec3, const std::string& vector_str, ErrorLo
 {
 	vec3.setZero();
 	btArray<std::string> pieces;
-	btArray<float> rgba;
+	btArray<double> rgba;
 	btAlignedObjectArray<std::string> strArray;
 	urdfIsAnyOf(" ", strArray);
 	urdfStringSplit(pieces, vector_str, strArray);
@@ -75,6 +75,28 @@ static bool parseVector3(btVector3& vec3, const std::string& vector_str, ErrorLo
 		vec3.setValue(rgba[0], rgba[1], rgba[2]);
 	}
 	return true;
+}
+
+// Parses user data from an xml element and stores it in a hashmap. User data is
+// expected to reside in a <user-data> tag that is nested inside a <bullet> tag.
+// Example:
+// <bullet>
+//   <user-data key="label">...</user-data>
+// </bullet>
+static void ParseUserData(const XMLElement* element, btHashMap<btHashString,
+	std::string>& user_data, ErrorLogger* logger) {
+	// Parse any custom Bullet-specific info.
+	for (const XMLElement* bullet_xml = element->FirstChildElement("bullet");
+			bullet_xml; bullet_xml = bullet_xml->NextSiblingElement("bullet")) {
+		for (const XMLElement* user_data_xml = bullet_xml->FirstChildElement("user-data");
+				user_data_xml; user_data_xml = user_data_xml->NextSiblingElement("user-data")) {
+			const char* key_attr = user_data_xml->Attribute("key");
+			if (!key_attr) {
+				logger->reportError("User data tag must have a key attribute.");
+			}
+			user_data.insert(key_attr, user_data_xml->GetText());
+		}
+	}
 }
 
 bool UrdfParser::parseMaterial(UrdfMaterial& material, XMLElement* config, ErrorLogger* logger)
@@ -732,6 +754,7 @@ bool UrdfParser::parseVisual(UrdfModel& model, UrdfVisual& visual, XMLElement* c
 			}
 		}
 	}
+	ParseUserData(config, visual.m_userData, logger);
 
 	return true;
 }
@@ -1071,6 +1094,7 @@ bool UrdfParser::parseLink(UrdfModel& model, UrdfLink& link, XMLElement* config,
 			return false;
 		}
 	}
+	ParseUserData(config, link.m_userData, logger);
 	return true;
 }
 
@@ -1280,7 +1304,9 @@ bool UrdfParser::parseJoint(UrdfJoint& joint, XMLElement* config, ErrorLogger* l
 	}
 
 	std::string type_str = type_char;
-	if (type_str == "planar")
+	if (type_str == "spherical")
+		joint.m_type = URDFSphericalJoint;
+	else if (type_str == "planar")
 		joint.m_type = URDFPlanarJoint;
 	else if (type_str == "floating")
 		joint.m_type = URDFFloatingJoint;
@@ -1587,7 +1613,15 @@ bool UrdfParser::initTreeAndRoot(UrdfModel& model, ErrorLogger* logger)
 
 	if (model.m_rootLinks.size() > 1)
 	{
-		logger->reportWarning("URDF file with multiple root links found");
+		std::string multipleRootMessage =
+			"URDF file with multiple root links found:";
+
+		for (int i = 0; i < model.m_rootLinks.size(); i++) 
+		{
+			multipleRootMessage += " ";
+			multipleRootMessage += model.m_rootLinks[i]->m_name.c_str();
+		}
+		logger->reportWarning(multipleRootMessage.c_str());
 	}
 
 	if (model.m_rootLinks.size() == 0)
@@ -1770,6 +1804,8 @@ bool UrdfParser::loadUrdf(const char* urdfText, ErrorLogger* logger, bool forceF
 			}
 		}
 	}
+
+	ParseUserData(robot_xml, m_urdf2Model.m_userData, logger);
 
 	if (m_urdf2Model.m_links.size() == 0)
 	{

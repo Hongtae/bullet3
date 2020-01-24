@@ -27,7 +27,6 @@ bool gEnableRendering = true;
 bool gActivedVRRealTimeSimulation = false;
 
 bool gEnableSyncPhysicsRendering = true;
-bool gEnableUpdateDebugDrawLines = true;
 static int gCamVisualizerWidth = 228;
 static int gCamVisualizerHeight = 192;
 
@@ -128,6 +127,7 @@ enum MultiThreadedGUIHelperCommunicationEnums
 	eGUIHelperChangeTexture,
 	eGUIHelperRemoveTexture,
 	eGUIHelperSetVisualizerFlagCheckRenderedFrame,
+	eGUIHelperUpdateShape,
 };
 
 #include <stdio.h>
@@ -177,6 +177,7 @@ struct MotionArgs
 {
 	MotionArgs()
 		: m_debugDrawFlags(0),
+		  m_enableUpdateDebugDrawLines(true),
 		  m_physicsServerPtr(0)
 	{
 		for (int i = 0; i < MAX_VR_CONTROLLERS; i++)
@@ -201,7 +202,7 @@ struct MotionArgs
 	b3CriticalSection* m_csGUI;
 
 	int m_debugDrawFlags;
-
+	bool m_enableUpdateDebugDrawLines;
 	btAlignedObjectArray<MyMouseCommand> m_mouseCommands;
 
 	b3VRControllerEvent m_vrControllerEvents[MAX_VR_CONTROLLERS];
@@ -424,13 +425,13 @@ void MotionThreadFunc(void* userPtr, void* lsMemory)
 					args->m_physicsServerPtr->stepSimulationRealTime(deltaTimeInSeconds, args->m_sendVrControllerEvents, numSendVrControllers, keyEvents, args->m_sendKeyEvents.size(), mouseEvents, args->m_sendMouseEvents.size());
 				}
 				{
-					if (gEnableUpdateDebugDrawLines)
+					args->m_csGUI->lock();
+					if (args->m_enableUpdateDebugDrawLines)
 					{
-						args->m_csGUI->lock();
 						args->m_physicsServerPtr->physicsDebugDraw(args->m_debugDrawFlags);
-						gEnableUpdateDebugDrawLines = false;
-						args->m_csGUI->unlock();
+						args->m_enableUpdateDebugDrawLines = false;
 					}
+					args->m_csGUI->unlock();
 				}
 				deltaTimeInSeconds = 0;
 			}
@@ -545,7 +546,7 @@ MultithreadedDebugDrawer : public btIDebugDraw
 	btHashMap<ColorWidth, int> m_hashedLines;
 
 public:
-	void drawDebugDrawerLines()
+	virtual void drawDebugDrawerLines()
 	{
 		if (m_hashedLines.size())
 		{
@@ -627,7 +628,7 @@ public:
 		return m_debugMode;
 	}
 
-	virtual void clearLines()
+	virtual void clearLines() override
 	{
 		m_hashedLines.clear();
 		m_sortedIndices.clear();
@@ -649,15 +650,29 @@ class MultiThreadedOpenGLGuiHelper : public GUIHelperInterface
 
 public:
 	MultithreadedDebugDrawer* m_debugDraw;
-	void drawDebugDrawerLines()
+	virtual void drawDebugDrawerLines()
 	{
 		if (m_debugDraw)
 		{
+			m_csGUI->lock();
+			//draw stuff and flush?
 			m_debugDraw->drawDebugDrawerLines();
+			m_csGUI->unlock();
 		}
 	}
+        virtual void clearLines()
+        {
+			m_csGUI->lock();
+			if (m_debugDraw)
+			{
+				m_debugDraw->clearLines();
+			}
+			m_csGUI->unlock();
+		}
+        
 	GUIHelperInterface* m_childGuiHelper;
 
+	btHashMap<btHashPtr, int> m_cachedTextureIds;
 	int m_uidGenerator;
 	const unsigned char* m_texels;
 	int m_textureWidth;
@@ -821,6 +836,16 @@ public:
 			m_childGuiHelper->syncPhysicsToGraphics(rbWorld);
 		}
 	}
+	
+	virtual void syncPhysicsToGraphics2(const btDiscreteDynamicsWorld* rbWorld)
+	{
+		 m_childGuiHelper->syncPhysicsToGraphics2(rbWorld);
+	}
+
+	virtual void syncPhysicsToGraphics2(const GUISyncPosition* positions, int numPositions)
+	{
+		m_childGuiHelper->syncPhysicsToGraphics2(positions, numPositions);
+	}
 
 	virtual void render(const btDiscreteDynamicsWorld* rbWorld)
 	{
@@ -835,10 +860,8 @@ public:
 			delete m_debugDraw;
 			m_debugDraw = 0;
 		}
-
-		m_debugDraw = new MultithreadedDebugDrawer(this);
-
-		rbWorld->setDebugDrawer(m_debugDraw);
+                m_debugDraw = new MultithreadedDebugDrawer(this);
+                rbWorld->setDebugDrawer(m_debugDraw);
 
 		//m_childGuiHelper->createPhysicsDebugDrawer(rbWorld);
 	}
@@ -854,8 +877,25 @@ public:
 		workerThreadWait();
 	}
 
+	int m_updateShapeIndex;
+	float* m_updateShapeVertices;
+
+	virtual void updateShape(int shapeIndex, float* vertices)
+	{
+		m_updateShapeIndex = shapeIndex;
+		m_updateShapeVertices = vertices;
+		
+		m_cs->lock();
+		m_cs->setSharedParam(1, eGUIHelperUpdateShape);
+		workerThreadWait();
+	}
 	virtual int registerTexture(const unsigned char* texels, int width, int height)
 	{
+		int* cachedTexture = m_cachedTextureIds[texels];
+		if (cachedTexture)
+		{
+			return *cachedTexture;
+		}
 		m_texels = texels;
 		m_textureWidth = width;
 		m_textureHeight = height;
@@ -864,7 +904,7 @@ public:
 		m_cs->setSharedParam(1, eGUIHelperRegisterTexture);
 
 		workerThreadWait();
-
+		m_cachedTextureIds.insert(texels, m_textureId);
 		return m_textureId;
 	}
 	virtual int registerGraphicsShape(const float* vertices, int numvertices, const int* indices, int numIndices, int primitiveType, int textureId)
@@ -918,6 +958,7 @@ public:
 
 	virtual void removeAllGraphicsInstances()
 	{
+		m_cachedTextureIds.clear();
 		m_cs->lock();
 		m_cs->setSharedParam(1, eGUIHelperRemoveAllGraphicsInstances);
 		workerThreadWait();
@@ -1482,6 +1523,7 @@ public:
 	{
 		//printf("key=%d, state=%d\n", key,state);
 		{
+			m_args[0].m_csGUI->lock();
 			int keyIndex = -1;
 			//is already there?
 			for (int i = 0; i < m_args[0].m_keyboardEvents.size(); i++)
@@ -1498,7 +1540,7 @@ public:
 				b3KeyboardEvent ev;
 				ev.m_keyCode = key;
 				ev.m_keyState = eButtonIsDown + eButtonTriggered;
-				m_args[0].m_csGUI->lock();
+				
 				if (keyIndex >= 0)
 				{
 					if (0 == (m_args[0].m_keyboardEvents[keyIndex].m_keyState & eButtonIsDown))
@@ -1510,11 +1552,10 @@ public:
 				{
 					m_args[0].m_keyboardEvents.push_back(ev);
 				}
-				m_args[0].m_csGUI->unlock();
+				
 			}
 			else
 			{
-				m_args[0].m_csGUI->lock();
 				b3KeyboardEvent ev;
 				ev.m_keyCode = key;
 				ev.m_keyState = eButtonReleased;
@@ -1526,8 +1567,9 @@ public:
 				{
 					m_args[0].m_keyboardEvents.push_back(ev);
 				}
-				m_args[0].m_csGUI->unlock();
+				
 			}
+			m_args[0].m_csGUI->unlock();
 		}
 		/*printf("m_args[0].m_keyboardEvents.size()=%d\n", m_args[0].m_keyboardEvents.size());
 		for (int i=0;i<m_args[0].m_keyboardEvents.size();i++)
@@ -1737,6 +1779,11 @@ void PhysicsServerExample::initPhysics()
 		m_args[w].m_cs2 = m_threadSupport->createCriticalSection();
 		m_args[w].m_cs3 = m_threadSupport->createCriticalSection();
 		m_args[w].m_csGUI = m_threadSupport->createCriticalSection();
+		m_multiThreadedHelper->setCriticalSection(m_args[w].m_cs);
+		m_multiThreadedHelper->setCriticalSection2(m_args[w].m_cs2);
+		m_multiThreadedHelper->setCriticalSection3(m_args[w].m_cs3);
+		m_multiThreadedHelper->setCriticalSectionGUI(m_args[w].m_csGUI);
+
 		m_args[w].m_cs->lock();
 		m_args[w].m_cs->setSharedParam(0, eMotionIsUnInitialized);
 		m_args[w].m_cs->unlock();
@@ -1758,13 +1805,9 @@ void PhysicsServerExample::initPhysics()
 #endif
 		}
 	}
-
+	m_args[0].m_cs->lock();
 	m_args[0].m_cs->setSharedParam(1, eGUIHelperIdle);
-	m_multiThreadedHelper->setCriticalSection(m_args[0].m_cs);
-	m_multiThreadedHelper->setCriticalSection2(m_args[0].m_cs2);
-	m_multiThreadedHelper->setCriticalSection3(m_args[0].m_cs3);
-	m_multiThreadedHelper->setCriticalSectionGUI(m_args[0].m_csGUI);
-
+	m_args[0].m_cs->unlock();
 	m_args[0].m_cs2->lock();
 
 	{
@@ -1897,6 +1940,15 @@ void PhysicsServerExample::updateGraphics()
 			m_multiThreadedHelper->mainThreadRelease();
 			break;
 		}
+
+		case eGUIHelperUpdateShape:
+		{
+			B3_PROFILE("eGUIHelperUpdateShape");
+			m_multiThreadedHelper->m_childGuiHelper->updateShape(m_multiThreadedHelper->m_updateShapeIndex, m_multiThreadedHelper->m_updateShapeVertices);
+			m_multiThreadedHelper->mainThreadRelease();
+			break;
+		}
+
 		case eGUIHelperRegisterGraphicsShape:
 		{
 			B3_PROFILE("eGUIHelperRegisterGraphicsShape");
@@ -2019,6 +2071,7 @@ void PhysicsServerExample::updateGraphics()
 			}
 			break;
 		}
+
 
 		case eGUIHelperSetVisualizerFlagCheckRenderedFrame:
 		{
@@ -2843,7 +2896,7 @@ void PhysicsServerExample::physicsDebugDraw(int debugDrawFlags)
 		//draw stuff and flush?
 		this->m_multiThreadedHelper->m_debugDraw->drawDebugDrawerLines();
 		m_args[0].m_debugDrawFlags = debugDrawFlags;
-		gEnableUpdateDebugDrawLines = true;
+		m_args[0].m_enableUpdateDebugDrawLines = true;
 		m_args[0].m_csGUI->unlock();
 	}
 }

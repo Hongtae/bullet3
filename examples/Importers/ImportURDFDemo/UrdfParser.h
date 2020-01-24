@@ -55,6 +55,7 @@ enum UrdfGeomTypes
 	URDF_GEOM_PLANE,
 	URDF_GEOM_CAPSULE,  //non-standard URDF
 	URDF_GEOM_CDF,      //signed-distance-field, non-standard URDF
+	URDF_GEOM_HEIGHTFIELD,   //heightfield, non-standard URDF
 	URDF_GEOM_UNKNOWN,
 };
 
@@ -81,11 +82,18 @@ struct UrdfGeometry
 		FILE_OBJ = 3,
 		FILE_CDF = 4,
 		MEMORY_VERTICES = 5,
+	        FILE_VTK = 6,
 
 	};
 	int m_meshFileType;
 	std::string m_meshFileName;
 	btVector3 m_meshScale;
+
+	btArray<btVector3> m_vertices;
+	btArray<btVector3> m_uvs;
+	btArray<btVector3> m_normals;
+	btArray<int> m_indices;
+
 
 	UrdfMaterial m_localMaterial;
 	bool m_hasLocalMaterial;
@@ -119,6 +127,8 @@ struct UrdfShape
 struct UrdfVisual : UrdfShape
 {
 	std::string m_materialName;
+	// Maps user data keys to user data values.
+	btHashMap<btHashString, std::string> m_userData;
 };
 
 struct UrdfCollision : UrdfShape
@@ -152,6 +162,8 @@ struct UrdfLink
 	URDFLinkContactInfo m_contactInfo;
 
 	SDFAudioSource m_audioSource;
+	// Maps user data keys to user data values.
+	btHashMap<btHashString, std::string> m_userData;
 
 	UrdfLink()
 		: m_parentLink(0),
@@ -196,6 +208,8 @@ struct UrdfModel
 	btHashMap<btHashString, UrdfMaterial*> m_materials;
 	btHashMap<btHashString, UrdfLink*> m_links;
 	btHashMap<btHashString, UrdfJoint*> m_joints;
+	// Maps user data keys to user data values.
+	btHashMap<btHashString, std::string> m_userData;
 
 	btArray<UrdfLink*> m_rootLinks;
 	bool m_overrideFixedBase;

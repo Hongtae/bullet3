@@ -50,6 +50,11 @@ struct btTimings
 
 			m_firstTiming = false;
 
+			if (startTime > endTime)
+			{
+				endTime = startTime;
+			}
+
 			unsigned long long int startTimeDiv1000 = startTime / 1000;
 			unsigned long long int endTimeDiv1000 = endTime / 1000;
 
@@ -62,10 +67,7 @@ struct btTimings
 
 #else
 
-			if (startTime > endTime)
-			{
-				endTime = startTime;
-			}
+			
 			unsigned int startTimeRem1000 = startTime % 1000;
 			unsigned int endTimeRem1000 = endTime % 1000;
 
@@ -174,7 +176,7 @@ void MyEnterProfileZoneFunc(const char* msg)
 {
 	if (gProfileDisabled)
 		return;
-#ifndef BT_NO_PROFILE
+
 	int threadId = btQuickprofGetCurrentThreadIndex2();
 	if (threadId < 0 || threadId >= BT_QUICKPROF_MAX_THREAD_COUNT)
 		return;
@@ -191,13 +193,13 @@ void MyEnterProfileZoneFunc(const char* msg)
 		gStartTimes[threadId][gStackDepths[threadId]] = 1 + gStartTimes[threadId][gStackDepths[threadId] - 1];
 	}
 	gStackDepths[threadId]++;
-#endif
+
 }
 void MyLeaveProfileZoneFunc()
 {
 	if (gProfileDisabled)
 		return;
-#ifndef BT_NO_PROFILE
+
 	int threadId = btQuickprofGetCurrentThreadIndex2();
 	if (threadId < 0 || threadId >= BT_QUICKPROF_MAX_THREAD_COUNT)
 		return;
@@ -214,7 +216,7 @@ void MyLeaveProfileZoneFunc()
 
 	unsigned long long int endTime = clk.getTimeNanoseconds();
 	gTimings[threadId].addTiming(name, threadId, startTime, endTime);
-#endif  //BT_NO_PROFILE
+
 }
 
 void b3ChromeUtilsStartTimings()

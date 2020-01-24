@@ -71,6 +71,11 @@ IF (BUILD_SHARED_LIBS)
 	ENDIF(WIN32)
 ENDIF(BUILD_SHARED_LIBS)
 
+INSTALL(TARGETS BulletExampleBrowserLib
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib${LIB_SUFFIX}
+        ARCHIVE DESTINATION lib${LIB_SUFFIX})
+
 ####################
 #
 # Bullet Example Browser main app
@@ -88,6 +93,9 @@ INCLUDE_DIRECTORIES(
 LINK_LIBRARIES(
         BulletExampleBrowserLib Bullet3Common BulletSoftBody BulletDynamics BulletCollision BulletInverseDynamicsUtils BulletInverseDynamics LinearMath OpenGLWindow gwen BussIK
 )
+
+
+add_definitions(-DINCLUDE_CLOTH_DEMOS)
 
 IF (WIN32)
 	INCLUDE_DIRECTORIES(
@@ -139,6 +147,11 @@ SET(ExtendedTutorialsSources
 )
 
 SET(BulletExampleBrowser_SRCS
+        ../BulletRobotics/FixJointBoxes.cpp
+
+        ../BulletRobotics/BoxStack.cpp
+        ../BulletRobotics/JointLimit.cpp
+        # ../BulletRobotics/GraspBox.cpp
 
 	../TinyRenderer/geometry.cpp
 	../TinyRenderer/model.cpp
@@ -158,6 +171,14 @@ SET(BulletExampleBrowser_SRCS
 	../SharedMemory/PhysicsClientSharedMemory_C_API.cpp
 	../SharedMemory/PhysicsClient.cpp
 	../SharedMemory/PhysicsClientC_API.cpp
+	../SharedMemory/GraphicsServerExample.cpp
+	../SharedMemory/GraphicsClientExample.cpp
+	../SharedMemory/RemoteGUIHelper.cpp
+	../SharedMemory/GraphicsServerExample.h
+	../SharedMemory/GraphicsClientExample.h
+	../SharedMemory/RemoteGUIHelper.h
+	../SharedMemory/GraphicsSharedMemoryCommands.h
+	../SharedMemory/GraphicsSharedMemoryPublic.h
 	../SharedMemory/PhysicsServerExample.cpp
 	../SharedMemory/PhysicsServerExampleBullet2.cpp
 	../SharedMemory/PhysicsClientExample.cpp
@@ -197,6 +218,8 @@ SET(BulletExampleBrowser_SRCS
 	../MultiThreadedDemo/MultiThreadedDemo.h
 	../MultiThreadedDemo/CommonRigidBodyMTBase.cpp
 	../MultiThreadedDemo/CommonRigidBodyMTBase.h
+	../Heightfield/HeightfieldExample.cpp
+	../Heightfield/HeightfieldExample.h
 	../Tutorial/Tutorial.cpp
 	../Tutorial/Tutorial.h
 	../Tutorial/Dof6ConstraintTutorial.cpp
@@ -328,7 +351,32 @@ SET(BulletExampleBrowser_SRCS
   ../MultiBody/InvertedPendulumPDControl.cpp
   ../MultiBody/InvertedPendulumPDControl.h
  ../MultiBody/MultiBodyConstraintFeedback.cpp
-  ../MultiBody/SerialChains.cpp
+  ../SoftDemo/SoftDemo.cpp
+  ../SoftDemo/SoftDemo.h
+  ../DeformableDemo/DeformableContact.cpp
+  ../DeformableDemo/DeformableContact.h
+  ../DeformableDemo/GraspDeformable.cpp
+  ../DeformableDemo/GraspDeformable.h
+  ../DeformableDemo/Pinch.cpp
+  ../DeformableDemo/Pinch.h
+  ../DeformableDemo/DeformableSelfCollision.cpp
+  ../DeformableDemo/DeformableSelfCollision.h
+  ../DeformableDemo/PinchFriction.cpp
+  ../DeformableDemo/PinchFriction.h
+  ../DeformableDemo/ClothFriction.cpp
+  ../DeformableDemo/ClothFriction.h
+  ../DeformableDemo/DeformableMultibody.cpp
+  ../DeformableDemo/DeformableMultibody.h
+  ../DeformableDemo/DeformableRigid.cpp
+  ../DeformableDemo/DeformableRigid.h
+  ../DeformableDemo/SplitImpulse.cpp
+  ../DeformableDemo/SplitImpulse.h
+  ../DeformableDemo/VolumetricDeformable.cpp
+  ../DeformableDemo/VolumetricDeformable.h
+  ../DeformableDemo/DeformableClothAnchor.cpp
+  ../DeformableDemo/DeformableClothAnchor.h
+  ../DeformableDemo/MultibodyClothAnchor.cpp
+  ../DeformableDemo/MultibodyClothAnchor.h
   ../MultiBody/MultiDofDemo.cpp
   ../MultiBody/MultiDofDemo.h
   ../RigidBody/RigidBodySoftContact.cpp
