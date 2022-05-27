@@ -4,7 +4,6 @@ import inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(os.path.dirname(currentdir))
 os.sys.path.insert(0, parentdir)
-import pybullet
 import gym
 import numpy as np
 import pybullet_envs
@@ -32,8 +31,8 @@ class SmallReactivePolicy:
 
 
 def main():
-  pybullet.connect(pybullet.DIRECT)
   env = gym.make("AntBulletEnv-v0")
+
   env.render(mode="human")
 
   pi = SmallReactivePolicy(env.observation_space, env.action_space)
@@ -55,8 +54,7 @@ def main():
       frame += 1
       distance = 5
       yaw = 0
-
-      still_open = env.render("human")
+      still_open = env.render(mode="human")
       if still_open == False:
         return
       if not done: continue

@@ -218,6 +218,11 @@ RemoteGUIHelper::~RemoteGUIHelper()
 	delete m_data;
 }
 
+bool RemoteGUIHelper::isConnected() const
+{
+	return m_data->isConnected();
+}
+
 void RemoteGUIHelper::setVisualizerFlag(int flag, int enable)
 {
 	GraphicsSharedMemoryCommand* cmd = m_data->getAvailableSharedMemoryCommand();
@@ -524,6 +529,11 @@ void RemoteGUIHelper::removeGraphicsInstance(int graphicsUid)
 		}
 	}
 }
+
+void RemoteGUIHelper::changeScaling(int instanceUid, const double scaling[3])
+{
+
+}
 void RemoteGUIHelper::changeRGBAColor(int instanceUid, const double rgbaColor[4])
 {
 	GraphicsSharedMemoryCommand* cmd = m_data->getAvailableSharedMemoryCommand();
@@ -614,6 +624,10 @@ void RemoteGUIHelper::drawText3D(const char* txt, float position[3], float orien
 }
 
 int RemoteGUIHelper::addUserDebugLine(const double debugLineFromXYZ[3], const double debugLineToXYZ[3], const double debugLineColorRGB[3], double lineWidth, double lifeTime, int trackingVisualShapeIndex, int replaceItemUid)
+{
+	return -1;
+}
+int RemoteGUIHelper::addUserDebugPoints(const double debugPointPositionXYZ[3], const double debugPointColorRGB[3], double pointSize, double lifeTime, int trackingVisualShapeIndex, int replaceItemUid, int debugPointNum)
 {
 	return -1;
 }

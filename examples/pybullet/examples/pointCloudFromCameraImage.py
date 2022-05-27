@@ -1,8 +1,10 @@
 import pybullet as p
 import math
 import numpy as np
+import pybullet_data
 
 p.connect(p.GUI)
+p.setAdditionalSearchPath(pybullet_data.getDataPath())
 plane = p.loadURDF("plane100.urdf")
 cube = p.loadURDF("cube.urdf", [0, 0, 1])
 
@@ -70,8 +72,10 @@ imgW = int(width / 10)
 imgH = int(height / 10)
 
 img = p.getCameraImage(imgW, imgH, renderer=p.ER_BULLET_HARDWARE_OPENGL)
-rgbBuffer = img[2]
-depthBuffer = img[3]
+rgbBuffer = np.reshape(img[2], (imgH, imgW, 4))
+# NOTE: this depth buffer's reshaping does not match the [w, h] convention for
+# OpenGL depth buffers.  See getCameraImageTest.py for an OpenGL depth buffer
+depthBuffer = np.reshape(img[3], [imgH, imgW])
 print("rgbBuffer.shape=", rgbBuffer.shape)
 print("depthBuffer.shape=", depthBuffer.shape)
 

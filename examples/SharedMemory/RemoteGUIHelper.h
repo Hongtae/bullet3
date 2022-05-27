@@ -12,6 +12,8 @@ struct RemoteGUIHelper : public GUIHelperInterface
 
 	virtual ~RemoteGUIHelper();
 
+	bool isConnected() const;
+
 	virtual void setVisualizerFlag(int flag, int enable);
 
 	virtual void createRigidBodyGraphicsObject(btRigidBody* body, const btVector3& color);
@@ -36,6 +38,7 @@ struct RemoteGUIHelper : public GUIHelperInterface
 	virtual void removeAllGraphicsInstances();
 	virtual void removeGraphicsInstance(int graphicsUid);
 	virtual void changeRGBAColor(int instanceUid, const double rgbaColor[4]);
+	virtual void changeScaling(int instanceUid, const double scaling[3]);
 
 	virtual Common2dCanvasInterface* get2dCanvasInterface();
 
@@ -66,6 +69,7 @@ struct RemoteGUIHelper : public GUIHelperInterface
 	virtual void drawText3D(const char* txt, float position[3], float orientation[4], float color[4], float size, int optionFlag);
 
 	virtual int addUserDebugLine(const double debugLineFromXYZ[3], const double debugLineToXYZ[3], const double debugLineColorRGB[3], double lineWidth, double lifeTime, int trackingVisualShapeIndex, int replaceItemUid);
+	virtual int addUserDebugPoints(const double debugPointPositionXYZ[3], const double debugPointColorRGB[3], double pointSize, double lifeTime, int trackingVisualShapeIndex, int replaceItemUid, int debugPointNum);
 	virtual void removeUserDebugItem(int debugItemUniqueId);
 	virtual void removeAllUserDebugItems();
 

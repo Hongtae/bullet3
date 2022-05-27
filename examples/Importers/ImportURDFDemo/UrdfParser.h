@@ -189,15 +189,93 @@ struct UrdfJoint
 
 	double m_jointDamping;
 	double m_jointFriction;
+	double m_twistLimit;
 	UrdfJoint()
 		: m_lowerLimit(0),
 		  m_upperLimit(-1),
 		  m_effortLimit(0),
 		  m_velocityLimit(0),
 		  m_jointDamping(0),
-		  m_jointFriction(0)
+		  m_jointFriction(0),
+		  m_twistLimit(-1)
 	{
 	}
+};
+
+struct SpringCoeffcients
+{
+	double elastic_stiffness;
+	double damping_stiffness;
+	double bending_stiffness;
+	int damp_all_directions;
+	int bending_stride;
+	SpringCoeffcients() : elastic_stiffness(0.),
+						  damping_stiffness(0.),
+						  bending_stiffness(0.),
+						  damp_all_directions(0),
+						  bending_stride(2) {}
+};
+
+struct LameCoefficients
+{
+	double mu;
+	double lambda;
+	double damping;
+	LameCoefficients() : mu(0.), lambda(0.), damping(0.) {}
+};
+
+struct UrdfDeformable
+{
+	std::string m_name;
+	double m_mass;
+	double m_collisionMargin;
+	double m_friction;
+	double m_repulsionStiffness;
+	double m_gravFactor;
+	bool m_cache_barycenter;
+
+	SpringCoeffcients m_springCoefficients;
+	LameCoefficients m_corotatedCoefficients;
+	LameCoefficients m_neohookeanCoefficients;
+
+	std::string m_visualFileName;
+	std::string m_simFileName;
+	btHashMap<btHashString, std::string> m_userData;
+
+	UrdfDeformable() : m_mass(1.), m_collisionMargin(0.02), m_friction(1.), m_repulsionStiffness(0.5), m_gravFactor(1.), m_cache_barycenter(false), m_visualFileName(""), m_simFileName("")
+	{
+	}
+};
+
+struct UrdfReducedDeformable
+{
+	std::string m_name;
+	int m_numModes;
+
+	double m_mass;
+	double m_stiffnessScale;
+	double m_erp;
+	double m_cfm;
+	double m_friction;
+	double m_collisionMargin;
+	double m_damping;
+
+	std::string m_visualFileName;
+	std::string m_simFileName;
+	btHashMap<btHashString, std::string> m_userData;
+
+	UrdfReducedDeformable() 
+		:	m_numModes(1),
+			m_mass(1),
+			m_stiffnessScale(100),
+			m_erp(0.2),					// generally, 0.2 is a good value for erp and cfm
+			m_cfm(0.2),
+			m_friction(0),
+			m_collisionMargin(0.02),
+			m_damping(0),
+			m_visualFileName(""),
+			m_simFileName("")
+	{}
 };
 
 struct UrdfModel
@@ -208,6 +286,8 @@ struct UrdfModel
 	btHashMap<btHashString, UrdfMaterial*> m_materials;
 	btHashMap<btHashString, UrdfLink*> m_links;
 	btHashMap<btHashString, UrdfJoint*> m_joints;
+	UrdfDeformable m_deformable;
+	UrdfReducedDeformable m_reducedDeformable;
 	// Maps user data keys to user data values.
 	btHashMap<btHashString, std::string> m_userData;
 
@@ -283,6 +363,9 @@ protected:
 	bool parseJoint(UrdfJoint& joint, tinyxml2::XMLElement* config, ErrorLogger* logger);
 	bool parseLink(UrdfModel& model, UrdfLink& link, tinyxml2::XMLElement* config, ErrorLogger* logger);
 	bool parseSensor(UrdfModel& model, UrdfLink& link, UrdfJoint& joint, tinyxml2::XMLElement* config, ErrorLogger* logger);
+  bool parseLameCoefficients(LameCoefficients& lameCoefficients, tinyxml2::XMLElement* config, ErrorLogger* logger);
+	bool parseDeformable(UrdfModel& model, tinyxml2::XMLElement* config, ErrorLogger* logger);
+	bool parseReducedDeformable(UrdfModel& model, tinyxml2::XMLElement* config, ErrorLogger* logger);
 
 public:
 	UrdfParser(struct CommonFileIOInterface* fileIO);
@@ -356,6 +439,20 @@ public:
 		}
 		return m_urdf2Model;
 	}
+
+	const UrdfDeformable& getDeformable() const
+	{
+		return m_urdf2Model.m_deformable;
+	}
+
+	const UrdfReducedDeformable& getReducedDeformable() const
+	{
+		return m_urdf2Model.m_reducedDeformable;
+	}
+
+	bool mergeFixedLinks(UrdfModel& model, UrdfLink* link, ErrorLogger* logger, bool forceFixedBase, int level);
+	bool printTree(UrdfLink* link, ErrorLogger* logger, int level);
+	bool recreateModel(UrdfModel& model, UrdfLink* link, ErrorLogger* logger);
 
 	std::string sourceFileLocation(tinyxml2::XMLElement* e);
 

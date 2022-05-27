@@ -2,10 +2,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pybullet as p
 import time
+import pybullet_data
 
 direct = p.connect(p.GUI)  #, options="--window_backend=2 --render_device=0")
 #egl = p.loadPlugin("eglRendererPlugin")
 
+p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.loadURDF('plane.urdf')
 p.loadURDF("r2d2.urdf", [0, 0, 1])
 p.loadURDF('cube_small.urdf', basePosition=[0.0, 0.0, 0.025])
@@ -29,6 +31,7 @@ images = p.getCameraImage(width,
                           projection_matrix,
                           shadow=True,
                           renderer=p.ER_BULLET_HARDWARE_OPENGL)
+# NOTE: the ordering of height and width change based on the conversion
 rgb_opengl = np.reshape(images[2], (height, width, 4)) * 1. / 255.
 depth_buffer_opengl = np.reshape(images[3], [width, height])
 depth_opengl = far * near / (far - (far - near) * depth_buffer_opengl)
